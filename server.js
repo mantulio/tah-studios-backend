@@ -32,9 +32,11 @@ const inquirySchema = new mongoose.Schema({
 
 const Inquiry = mongoose.model('Inquiry', inquirySchema);
 
-// Configure Nodemailer Transporter
+// Configure Nodemailer Transporter for Ethereal SMTP
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.ethereal.email',
+    port: 587,
+    secure: false,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
@@ -70,7 +72,7 @@ app.post('/api/inquiries', async (req, res) => {
         const newInquiry = new Inquiry({ name, email, service, message });
         await newInquiry.save();
 
-        // 2. Send Email Notification (Crash-proof: won't fail the request if email isn't configured)
+        // 2. Send Email Notification via Ethereal
         if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
             try {
                 const mailOptions = {
@@ -85,7 +87,8 @@ app.post('/api/inquiries', async (req, res) => {
                         <p><strong>Message:</strong> ${message || 'No additional notes provided.'}</p>
                     `
                 };
-                await transporter.sendMail(mailOptions);
+                const info = await transporter.sendMail(mailOptions);
+                console.log('Ethereal message sent successfully. Preview URL:', nodemailer.getTestMessageUrl(info));
             } catch (mailErr) {
                 console.error('Email notification failed to send, but inquiry was safely saved to DB:', mailErr);
             }
