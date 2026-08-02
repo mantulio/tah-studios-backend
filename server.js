@@ -12,7 +12,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
 .then(() => {
@@ -71,25 +70,30 @@ app.post('/api/inquiries', async (req, res) => {
         const newInquiry = new Inquiry({ name, email, service, message });
         await newInquiry.save();
 
-        // 2. Send Email Notification to TAH Studios
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: process.env.EMAIL_USER, // Sends the alert to your studio email
-            subject: `New Project Inquiry: ${service} - ${name}`,
-            html: `
-                <h2>New Project Inquiry Received</h2>
-                <p><strong>Name:</strong> ${name}</p>
-                <p><strong>Email:</strong> ${email}</p>
-                <p><strong>Selected Service:</strong> ${service}</p>
-                <p><strong>Message:</strong> ${message || 'No additional notes provided.'}</p>
-            `
-        };
-
-        await transporter.sendMail(mailOptions);
+        // 2. Send Email Notification (Crash-proof: won't fail the request if email isn't configured)
+        if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+            try {
+                const mailOptions = {
+                    from: process.env.EMAIL_USER,
+                    to: process.env.EMAIL_USER,
+                    subject: `New Project Inquiry: ${service} - ${name}`,
+                    html: `
+                        <h2>New Project Inquiry Received</h2>
+                        <p><strong>Name:</strong> ${name}</p>
+                        <p><strong>Email:</strong> ${email}</p>
+                        <p><strong>Selected Service:</strong> ${service}</p>
+                        <p><strong>Message:</strong> ${message || 'No additional notes provided.'}</p>
+                    `
+                };
+                await transporter.sendMail(mailOptions);
+            } catch (mailErr) {
+                console.error('Email notification failed to send, but inquiry was safely saved to DB:', mailErr);
+            }
+        }
 
         res.status(201).json({ 
             success: true, 
-            message: 'Inquiry received, saved, and email notification sent successfully.' 
+            message: 'Inquiry received and saved successfully!' 
         });
 
     } catch (err) {
