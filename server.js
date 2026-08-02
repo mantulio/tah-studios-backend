@@ -69,7 +69,7 @@ app.post('/api/inquiries', async (req, res) => {
             try {
                 const data = await resend.emails.send({
                     from: 'TAH Studios <onboarding@resend.dev>',
-                    to: 'tahstudiosabuja@gmail.com',
+                    to: 'umaruzzy40@gmail.com',
                     subject: `New Project Inquiry: ${service} - ${name}`,
                     html: `
                         <h2>New Project Inquiry Received</h2>
