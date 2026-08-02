@@ -1,11 +1,14 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Initialize Resend with your API key
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Middleware
 app.use(cors());
@@ -31,17 +34,6 @@ const inquirySchema = new mongoose.Schema({
 });
 
 const Inquiry = mongoose.model('Inquiry', inquirySchema);
-
-// Configure Nodemailer Transporter for Ethereal SMTP
-const transporter = nodemailer.createTransport({
-    host: 'smtp.ethereal.email',
-    port: 587,
-    secure: false,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
 
 // Test Route
 app.get('/', (req, res) => {
@@ -72,12 +64,12 @@ app.post('/api/inquiries', async (req, res) => {
         const newInquiry = new Inquiry({ name, email, service, message });
         await newInquiry.save();
 
-        // 2. Send Email Notification via Ethereal
-        if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        // 2. Send Email Notification via Resend API (HTTPS)
+        if (process.env.RESEND_API_KEY) {
             try {
-                const mailOptions = {
-                    from: process.env.EMAIL_USER,
-                    to: process.env.EMAIL_USER,
+                const data = await resend.emails.send({
+                    from: 'TAH Studios <onboarding@resend.dev>',
+                    to: 'tahstudiosabuja@gmail.com',
                     subject: `New Project Inquiry: ${service} - ${name}`,
                     html: `
                         <h2>New Project Inquiry Received</h2>
@@ -86,9 +78,8 @@ app.post('/api/inquiries', async (req, res) => {
                         <p><strong>Selected Service:</strong> ${service}</p>
                         <p><strong>Message:</strong> ${message || 'No additional notes provided.'}</p>
                     `
-                };
-                const info = await transporter.sendMail(mailOptions);
-                console.log('Ethereal message sent successfully. Preview URL:', nodemailer.getTestMessageUrl(info));
+                });
+                console.log('Resend email dispatched successfully:', data);
             } catch (mailErr) {
                 console.error('Email notification failed to send, but inquiry was safely saved to DB:', mailErr);
             }
