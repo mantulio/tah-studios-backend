@@ -41,6 +41,17 @@ app.get('/', (req, res) => {
     res.json({ message: 'TAH Studios Backend is running successfully.' });
 });
 
+// PUBLIC: Check Payment Status by Checkout ID (Used by Frontend Polling)
+app.get('/api/checkout/status-by-id/:id', async (req, res) => {
+    try {
+        const record = await Checkout.findById(req.params.id);
+        if (!record) return res.status(404).json({ error: 'No record found.' });
+        res.status(200).json(record);
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // ADMIN: Acknowledge Payment & Auto-Email Client + Send Confirmed Status to Frontend
 app.patch('/api/checkout/acknowledge/:id', async (req, res) => {
     try {
@@ -168,9 +179,10 @@ app.post('/api/checkout', async (req, res) => {
             }
         }
 
-        // Return the checkout ID so the frontend can optionally poll or track it dynamically if open
+        // Return the checkoutId so the frontend can poll properly
         res.status(201).json({ success: true, checkoutId: newCheckout._id, message: 'Payment proof submitted!' });
     } catch (err) {
+        console.error('Server error processing checkout:', err);
         res.status(500).json({ error: 'Server error processing checkout.' });
     }
 });
